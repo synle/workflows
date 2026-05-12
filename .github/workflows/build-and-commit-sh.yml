@@ -75,15 +75,11 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then
             echo "::group::🚀 Running npm ci @ $(date '+%Y-%m-%d %H:%M:%S')"
-            if ! npm ci; then
-              echo "::warning::npm ci failed — likely a cross-platform optional dep issue (npm 11.x emits 'extraneous: true' on platforms not matching the runner). Falling back to npm install."
-              rm -f package-lock.json
-              npm install
-            fi
+            npm ci || npm install --no-fund --prefer-offline
             echo "::endgroup::"
           elif [ -f package.json ]; then
             echo "::group::🚀 Running npm install @ $(date '+%Y-%m-%d %H:%M:%S')"
-            npm install
+            npm install --no-fund --prefer-offline
             echo "::endgroup::"
           else
             echo "⏭️ Skipping. No package.json found."
