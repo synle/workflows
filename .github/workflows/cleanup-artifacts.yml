@@ -2,18 +2,18 @@ name: Cleanup Artifacts (Scheduled)
 
 on:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
   workflow_dispatch:
     inputs:
       keep_last:
-        description: 'Number of successful builds to keep artifacts from'
+        description: "Number of successful builds to keep artifacts from"
         required: false
-        default: '1'
+        default: "1"
         type: number
       keep_runs_days:
-        description: 'Delete runs older than N days'
+        description: "Delete runs older than N days"
         required: false
-        default: '30'
+        default: "30"
         type: number
 
 jobs:

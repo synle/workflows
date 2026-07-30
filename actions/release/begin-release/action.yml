@@ -17,7 +17,7 @@ inputs:
     required: false
     default: ""
   version_file:
-    description: "File to read version from. Any JSON file with a \"version\" field (package.json, tauri.conf.json, etc.) or Cargo.toml."
+    description: 'File to read version from. Any JSON file with a "version" field (package.json, tauri.conf.json, etc.) or Cargo.toml.'
     required: false
     default: "package.json"
   version_command:

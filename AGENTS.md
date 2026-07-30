@@ -44,19 +44,19 @@ Composable actions for GitHub release workflows. Repos keep their own build step
 
 **High-level actions** (what repos call directly):
 
-| Action | When | Purpose |
-|--------|------|---------|
+| Action                          | When         | Purpose                                                                 |
+| ------------------------------- | ------------ | ----------------------------------------------------------------------- |
 | `actions/release/begin-release` | Before build | Checkout + resolve tag + cleanup old release + create draft placeholder |
-| `actions/release/end-release` | After build | Checkout + generate changelog + upload assets + set final title/flags |
+| `actions/release/end-release`   | After build  | Checkout + generate changelog + upload assets + set final title/flags   |
 
 **Low-level actions** (`actions/release/_common/`, called by the high-level actions):
 
-| Action | Purpose |
-|--------|---------|
-| `_common/resolve-tag` | Resolve tag + SHA. Official: reads version from file → `v{version}`. Beta: generates `release-beta-{date}-{sha}` |
-| `_common/draft` | Delete existing release/tag, create draft prerelease placeholder |
-| `_common/notes` | Generate changelog markdown from git log (prev tag to HEAD, max N commits, diff link, optional user notes + extra body) |
-| `_common/finalize` | Upload assets, update release body, set title and draft/prerelease/latest flags based on mode + build result |
+| Action                | Purpose                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `_common/resolve-tag` | Resolve tag + SHA. Official: reads version from file → `v{version}`. Beta: generates `release-beta-{date}-{sha}`        |
+| `_common/draft`       | Delete existing release/tag, create draft prerelease placeholder                                                        |
+| `_common/notes`       | Generate changelog markdown from git log (prev tag to HEAD, max N commits, diff link, optional user notes + extra body) |
+| `_common/finalize`    | Upload assets, update release body, set title and draft/prerelease/latest flags based on mode + build result            |
 
 **Usage pattern** (same for both official and beta, across all repos):
 
@@ -71,9 +71,9 @@ jobs:
       - uses: synle/workflows/actions/release/begin-release@main
         id: pre
         with:
-          mode: official  # or beta
+          mode: official # or beta
           project_name: my-project
-          version_file: package.json  # or Cargo.toml
+          version_file: package.json # or Cargo.toml
 
   build:
     needs: [prepare]
@@ -88,7 +88,7 @@ jobs:
         with:
           tag: ${{ needs.prepare.outputs.tag }}
           project_name: my-project
-          mode: official  # or beta
+          mode: official # or beta
           build_result: ${{ needs.build.result }}
           files: |
             artifacts/my-asset.zip
@@ -96,12 +96,12 @@ jobs:
 
 **Finalize behavior matrix:**
 
-| Mode | Build Result | Title | Draft | Prerelease | Latest |
-|------|-------------|-------|-------|------------|--------|
-| official | success | `project tag` | false (published) | false | true |
-| official | failure | `project tag [Error]` | true | true | false |
-| beta | success | `project tag [Success]` | true | true | false |
-| beta | failure | `project tag [Error]` | true | true | false |
+| Mode     | Build Result | Title                   | Draft             | Prerelease | Latest |
+| -------- | ------------ | ----------------------- | ----------------- | ---------- | ------ |
+| official | success      | `project tag`           | false (published) | false      | true   |
+| official | failure      | `project tag [Error]`   | true              | true       | false  |
+| beta     | success      | `project tag [Success]` | true              | true       | false  |
+| beta     | failure      | `project tag [Error]`   | true              | true       | false  |
 
 **Repos using these actions:** url-porter, display-dj, display-dj-cli, sqlui-native.
 
@@ -138,7 +138,6 @@ Do NOT use:
 - **`format.sh`** — Parameterized formatter. Args: `$1` = format command (default `npm run format`), `$2` = timeout in seconds (default 20), remaining args = format steps. Sources the actual format functions from `synle/bashrc` repo's `.build/format.sh` via curl. Available steps: `format_cleanup`, `format_cleanup_light`, `format_other_text_based_files`, `format_python`, `format_js`.
 - **`dev.sh`** — File watcher with configurable patterns. Args: `$1` = glob patterns, `$2` = start command, `$3` = max file size KB. Polls every 3 seconds using `find` + `stat`, runs `build.sh` on changes. Cross-platform stat detection (GNU vs BSD).
 - **`setup-repo-node.sh`** — One-shot repo bootstrapper. Sets up `.gitattributes` (LF line endings), `.gitignore`, `.prettierignore`, `dependabot.yml` (monthly npm updates), and adds `prettier` + format script to `package.json`.
-
 
 ## Git / PR Merge Policy
 
