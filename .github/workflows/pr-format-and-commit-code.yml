@@ -18,6 +18,11 @@ on:
         type: string
         required: false
         default: "^dist/sw.*\\.js$"
+      oxfmt-version:
+        description: "oxfmt version to run via npx (pinned so formatter upgrades don't silently churn consumer repos)"
+        required: false
+        type: string
+        default: "0.61.0"
 
 jobs:
   build:
@@ -39,12 +44,12 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
 
-      - name: Format Code with Prettier
+      - name: Format Code with oxfmt
         id: format
         shell: bash
         run: |
-          echo "::group::✨ Running prettier @ $(date '+%Y-%m-%d %H:%M:%S')"
-          npx --yes prettier --write **/*.{html,md}
+          echo "::group::✨ Running oxfmt @ $(date '+%Y-%m-%d %H:%M:%S')"
+          npx --yes oxfmt@${{ inputs.oxfmt-version }} --write --no-error-on-unmatched-pattern '**/*.html' '**/*.md'
           echo "::endgroup::"
 
       - name: Check for Meaningful Changes
@@ -68,7 +73,7 @@ jobs:
         if: steps.check-changes.outputs.should_commit != 'false'
         uses: EndBug/add-and-commit@v9
         with:
-          message: "CI / CD - Prettier Automatic Commit"
+          message: "CI / CD - Format Updates Automatic Commit"
           default_author: github_actions
         continue-on-error: true
 

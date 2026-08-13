@@ -20,3 +20,4 @@ jobs:
       os: "ubuntu-latest"
       node-version: "24.x"
       ignore-commit-pattern: "^dist/sw.*\\.js$"
+      oxfmt-version: "0.61.0"

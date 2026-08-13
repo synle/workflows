@@ -16,12 +16,15 @@ file under `.github/workflows/` that serves as the caller-side snippet downstrea
 - `.github/workflows/` — All reusable workflows (`workflow_call` entrypoints) plus `.yml.template`
   caller-side snippets. The major workflows are:
   - `build-and-commit-sh.yml` — full Node.js CI: install, build, format, commit artifacts, test, optional Pages deploy.
-  - `pr-format-and-commit-code.yml` — formats code and commits the result back to the PR branch.
+  - `pr-format-and-commit-code.yml` — formats HTML/Markdown with `oxfmt` and commits the result back to the PR branch.
   - `pr-js-yarn.yml`, `pr-js-yarn-16.yml`, `pr-js-yarn-16-v2.yml` — JS/Yarn PR pipelines (default Node 24, Node 16 variants).
   - `pr-make-format.yml` — Makefile-driven format/check PR pipeline.
-  - `cleanup-artifacts.yml` — scheduled bulk artifact cleanup.
   - `cleanup-pr-artifacts.yml` — per-PR artifact cleanup on `pull_request: closed`.
   - `cleanup-releases.yml` — draft / incomplete-release cleanup with dry-run support.
+
+  `cleanup-artifacts.yml` also lives here but is **not** a `workflow_call` entrypoint — it is this
+  repo's own scheduled bulk cleanup job, so it has no `.template` sibling.
+
 - `actions/release/` — Composite actions for a two-phase release flow:
   - `begin-release/` — pre-build setup: tag resolution, cleanup, draft release placeholder.
   - `end-release/` — post-build finalization: release notes, asset upload, flag promotion.
@@ -33,8 +36,9 @@ file under `.github/workflows/` that serves as the caller-side snippet downstrea
 
 - `.github/workflows/build-and-commit-sh.yml` — Reusable Node.js pipeline with priority-based detection
   (Makefile → `build.sh` → `npm run build`, etc.) and a Job Summary status table.
-- `.github/workflows/pr-format-and-commit-code.yml` — Runs formatter and commits formatted code back to
-  the PR branch (default Node 24.x, configurable `os`/`node-version`).
+- `.github/workflows/pr-format-and-commit-code.yml` — Runs `oxfmt` over HTML/Markdown and commits the
+  formatted code back to the PR branch (default Node 24.x, configurable `os` / `node-version` /
+  `oxfmt-version`).
 - `.github/workflows/pr-js-yarn.yml` — Base JS+Yarn PR workflow (Node 24.x default).
 - `.github/workflows/pr-js-yarn-16.yml` — Thin wrapper around `pr-js-yarn.yml` pinned to Node 16.
 - `.github/workflows/pr-js-yarn-16-v2.yml` — Variant Node-16 wrapper around `pr-js-yarn.yml`.
@@ -57,3 +61,11 @@ file under `.github/workflows/` that serves as the caller-side snippet downstrea
 
 No build artifacts. Consumers pin to a release tag or branch via `@<ref>`; the repo itself is versioned
 via release tags published from `main`.
+
+## Formatting
+
+Formatting is centralized on [oxfmt](https://www.npmjs.com/package/oxfmt), which replaced Prettier and
+handles JS/TS, JSON, Markdown, YAML, HTML, and CSS in one pass. `.oxfmtrc.json` holds the settings
+(`printWidth: 140`, `ignorePatterns` for lockfiles); `.gitignore` supplies the rest of the ignores.
+`setup-repo-node.sh` provisions the same setup in downstream repos, and
+`pr-format-and-commit-code.yml` runs a pinned `oxfmt` in CI.

@@ -1,6 +1,6 @@
 # AGENTS
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -11,32 +11,35 @@ Reusable GitHub Actions workflows and composite actions repository (`synle/workf
 - **Always use `curl -fsSL` for curl commands.** Standard curl flag convention across all scripts.
 - **Bash functions must use the `function` keyword**: Write `function foo() {` not `foo() {`.
 - **Always run `bash format.sh` after making changes.**
-- **URLs must use `synle/workflows/`** (plural). The repo was renamed from `gha-workflow` to `gha-workflows`. Never use the old `synle/gha-workflow/` URL.
+- **URLs must use `synle/workflows/`.** The repo was renamed from `gha-workflow` to `workflows`. Never use the old `synle/gha-workflow/` URL.
+- **oxfmt, not Prettier.** Formatting is handled by [oxfmt](https://www.npmjs.com/package/oxfmt) (JS/TS, JSON, Markdown, YAML, HTML, CSS in one pass). Config lives in `.oxfmtrc.json`. Do not reintroduce Prettier, `.prettierignore`, or `.prettier-cache`.
 
 ## Commands
 
 ```bash
-npm run format          # Run Prettier (--write --print-width 140)
+npm run format          # Run oxfmt --write . (printWidth 140 from .oxfmtrc.json)
+npm run format:check    # Run oxfmt --check . (non-mutating; use in CI)
 bash format.sh          # Full format pipeline: sources remote format functions from bashrc repo, runs cleanup/python/JS/custom steps
 bash dev.sh             # File watcher: runs build.sh on changes, starts dev server
-bash setup-repo-node.sh # Bootstrap a new Node repo with .gitattributes, .gitignore, .prettierignore, dependabot, prettier
+bash setup-repo-node.sh # Bootstrap a new Node repo with .gitattributes, .gitignore, .oxfmtrc.json, dependabot, oxfmt
 ```
 
 ## Architecture
 
 ### Reusable Workflows (`.github/workflows/`)
 
-All `*.yml` files are reusable workflows triggered via `workflow_call`. Each has a matching `*.yml.template` showing how consumers should reference it.
+Every `*.yml` here is a reusable workflow triggered via `workflow_call`, each with a matching `*.yml.template` showing how consumers should reference it — with one exception: `cleanup-artifacts.yml` is this repo's own scheduled self-maintenance job, not a reusable workflow, so it has no template and cannot be called with `uses:`.
 
 | Workflow                                     | Purpose                                                                                                                         |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `build-and-commit-sh.yml`                    | Full Node.js CI: install deps, `make build` or `build.sh`, format, commit artifacts, optionally test and deploy to GitHub Pages |
 | `cleanup-pr-artifacts.yml`                   | Delete artifacts (and optionally workflow runs) when a PR is closed or merged                                                   |
 | `cleanup-releases.yml`                       | Cleanup GitHub releases: delete old drafts and incomplete releases (missing assets) with dry-run support                        |
-| `pr-format-and-commit-code.yml`              | Lightweight: runs `npx --yes prettier --write` on HTML/MD files, then commits                                                   |
+| `pr-format-and-commit-code.yml`              | Lightweight: runs `oxfmt --write` on HTML/MD files, then commits (pin via the `oxfmt-version` input)                            |
 | `pr-js-yarn.yml`                             | Yarn-based: `yarn install`, format, test-ci, build, commit                                                                      |
 | `pr-js-yarn-16.yml` / `pr-js-yarn-16-v2.yml` | Yarn variants for Node 16                                                                                                       |
 | `pr-make-format.yml`                         | Format-only: runs `make format`, `npm run format`, or remote `format.sh`, then commits                                          |
+| `cleanup-artifacts.yml`                      | **Not reusable.** Scheduled (`cron: 0 0 * * 0`) repo-local cleanup of artifacts, draft releases, and old workflow runs          |
 
 ### Release Composite Actions (`actions/release/`)
 
@@ -137,7 +140,7 @@ Do NOT use:
 
 - **`format.sh`** — Parameterized formatter. Args: `$1` = format command (default `npm run format`), `$2` = timeout in seconds (default 20), remaining args = format steps. Sources the actual format functions from `synle/bashrc` repo's `.build/format.sh` via curl. Available steps: `format_cleanup`, `format_cleanup_light`, `format_other_text_based_files`, `format_python`, `format_js`.
 - **`dev.sh`** — File watcher with configurable patterns. Args: `$1` = glob patterns, `$2` = start command, `$3` = max file size KB. Polls every 3 seconds using `find` + `stat`, runs `build.sh` on changes. Cross-platform stat detection (GNU vs BSD).
-- **`setup-repo-node.sh`** — One-shot repo bootstrapper. Sets up `.gitattributes` (LF line endings), `.gitignore`, `.prettierignore`, `dependabot.yml` (monthly npm updates), and adds `prettier` + format script to `package.json`.
+- **`setup-repo-node.sh`** — One-shot repo bootstrapper. Sets up `.gitattributes` (LF line endings), `.gitignore`, `.oxfmtrc.json` (ignore patterns + `printWidth: 140`), `dependabot.yml` (monthly npm updates), and adds `oxfmt` plus `format` / `format:check` scripts to `package.json`. Idempotent — safe to re-run, and it removes a leftover `prettier` dependency if one is present.
 
 ## Git / PR Merge Policy
 

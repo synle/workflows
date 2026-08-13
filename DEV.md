@@ -29,3 +29,24 @@ Available reusable workflows (all under `synle/workflows/.github/workflows/`):
 - `cleanup-releases.yml` — Prune old GitHub releases.
 
 Pin to a SHA or tag instead of `@main` for reproducible builds.
+
+`cleanup-artifacts.yml` is deliberately absent from that list — it is this repo's own scheduled
+self-maintenance job, not a `workflow_call` entrypoint. Copy the file into a consumer repo instead
+of referencing it with `uses:`.
+
+## Local Development
+
+This repo ships no build output; the only local loop is formatting.
+
+```bash
+npm install           # installs oxfmt (the sole devDependency)
+npm run format        # oxfmt --write .
+npm run format:check  # oxfmt --check . — non-mutating, what CI should gate on
+```
+
+Formatting is [oxfmt](https://www.npmjs.com/package/oxfmt), which replaced Prettier and covers
+JS/TS, JSON, Markdown, YAML, HTML, and CSS in a single pass. Settings live in `.oxfmtrc.json`
+(`printWidth: 140`); ignores come from `.gitignore` plus the config's `ignorePatterns`.
+
+Changes to a `*.yml` reusable workflow should be mirrored in its `*.yml.template` sibling so the
+caller-side snippet stays accurate.

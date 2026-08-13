@@ -1,8 +1,8 @@
 {
-  "name": "synle-gha-workflow",
+  "name": "synle-workflows",
   "version": "1.0.0",
+  "private": true,
   "description": "Sy's Common github actions flow",
-  "main": "index.js",
   "scripts": {
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check ."
