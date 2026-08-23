@@ -1,13 +1,9 @@
 /** Crash-safe rebuild of the managed subfolders under the url-porter folder. */
 
 /**
- * Suffix appended to a folder while it is being rebuilt.
- *
- * The reconcilers used to delete the live folder and then recreate it. In MV3
- * the service worker can be terminated at any await, so an interrupted run left
- * the user with no folder at all and no way to get the contents back. Instead we
- * build into a staging folder, and only drop the live folder once the
- * replacement is fully populated.
+ * Suffix appended to a managed folder while being rebuilt. Work happens in the
+ * staging copy; only a fully populated replacement swaps in, so an interrupted
+ * run never leaves the user without the folder.
  *
  * @type {string}
  */
@@ -24,10 +20,9 @@ export function stagingTitleFor(title) {
 }
 
 /**
- * Remove a staging folder abandoned by an interrupted rebuild of this folder.
- *
- * Scoped to the exact staging title rather than every staging folder, so that
- * rebuilding one managed folder can never delete another one's in-flight work.
+ * Remove the staging folder abandoned by an interrupted rebuild of this folder.
+ * Scoped to the exact staging title so one rebuild can never delete another's
+ * in-flight work.
  *
  * @param {chrome.bookmarks.BookmarkTreeNode[]} children - Children of the porter folder.
  * @param {string} title - Final title of the managed subfolder being rebuilt.
@@ -45,11 +40,10 @@ async function removeStaleStagingFolders(children, title) {
 /**
  * Rebuild a managed subfolder without ever leaving the user without one.
  *
- * The replacement is populated in a staging folder first, created directly at
- * its final position. Only once `populate` resolves is the previous folder
- * removed and the staging folder renamed into place. If `populate` throws — or
- * the worker dies part way through it — the previous folder is still there, and
- * the next run cleans up the orphaned staging folder.
+ * Populate a staging folder created at the final position; only after
+ * `populate` resolves is the previous folder removed and staging renamed into
+ * place. If `populate` throws — or the worker dies part way through it — the
+ * previous folder survives and the next run removes the orphaned staging one.
  *
  * @param {object} options - Rebuild options.
  * @param {string} options.parentId - The url-porter folder ID.
@@ -57,9 +51,8 @@ async function removeStaleStagingFolders(children, title) {
  * @param {(folderId: string) => Promise<void>} options.populate - Fills the new folder.
  * @param {(children: chrome.bookmarks.BookmarkTreeNode[]) => number} options.resolveIndex -
  *   Returns the position for the folder. Receives the porter folder's current
- *   children, which still include the folder being replaced; removing that
- *   folder afterwards does not shift the staging folder relative to its
- *   remaining siblings, so the resolved index still holds.
+ *   children, still including the folder being replaced; removing it afterwards
+ *   does not shift staging relative to remaining siblings, so the index holds.
  * @returns {Promise<void>}
  */
 export async function rebuildManagedSubfolder({ parentId, title, populate, resolveIndex }) {
@@ -81,9 +74,7 @@ export async function rebuildManagedSubfolder({ parentId, title, populate, resol
     throw err;
   }
 
-  const live = (await chrome.bookmarks.getChildren(parentId)).find(
-    (c) => !c.url && c.title === title,
-  );
+  const live = (await chrome.bookmarks.getChildren(parentId)).find((c) => !c.url && c.title === title);
   if (live) {
     await chrome.bookmarks.removeTree(live.id);
   }

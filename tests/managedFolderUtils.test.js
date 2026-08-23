@@ -8,8 +8,7 @@ import { createChromeMock } from "./_chromeMock.js";
 const { chrome, mockBookmarks, addMockFolder, addMockBookmark, reset } = createChromeMock();
 vi.stubGlobal("chrome", chrome);
 
-const { rebuildManagedSubfolder, stagingTitleFor } =
-  await import("../src/helpers/managedFolderUtils.js");
+const { rebuildManagedSubfolder, stagingTitleFor } = await import("../src/helpers/managedFolderUtils.js");
 
 /**
  * Titles of a folder's children that are bookmarks (not subfolders).
