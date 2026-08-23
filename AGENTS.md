@@ -128,8 +128,10 @@ uses: synle/workflows/.github/workflows/<workflow>.yml@main
 When fetching raw file content from GitHub repos, always use the `?raw=1` blob URL format:
 
 ```
-https://github.com/{owner}/{repo}/blob/head/{path}?raw=1
+https://github.com/{owner}/{repo}/blob/main/{path}?raw=1
 ```
+
+Use the default branch name (`main`) in the path — `head` is not a real ref and 404s.
 
 Do NOT use:
 

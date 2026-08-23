@@ -1,10 +1,10 @@
-## curl -fsSL "https://github.com/synle/workflows/blob/head/setup-repo-node.sh?raw=1" | bash
+## curl -fsSL "https://github.com/synle/workflows/blob/main/setup-repo-node.sh?raw=1" | bash
 # Initialize configuration files
-echo "* text=auto eol=lf" > .gitattributes
+echo "* text=auto eol=lf" >.gitattributes
 
 # dependabot
 mkdir -p .github
-cat <<EOF > .github/dependabot.yml
+cat <<EOF >.github/dependabot.yml
 version: 2
 updates:
   - package-ecosystem: npm

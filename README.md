@@ -68,8 +68,8 @@ A Job Summary table reports pass/fail/skip per step.
 - **`setup-repo-node.sh`** — Bootstrap a Node repo: `.gitattributes`, `.gitignore`, `.oxfmtrc.json`, `dependabot.yml`, oxfmt.
 
 ```bash
-curl -fsSL "https://github.com/synle/workflows/blob/head/format.sh?raw=1" | bash
-curl -fsSL "https://github.com/synle/workflows/blob/head/setup-repo-node.sh?raw=1" | bash
+curl -fsSL "https://github.com/synle/workflows/blob/main/format.sh?raw=1" | bash
+curl -fsSL "https://github.com/synle/workflows/blob/main/setup-repo-node.sh?raw=1" | bash
 ```
 
 ## Formatting

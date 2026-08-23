@@ -120,7 +120,7 @@ jobs:
             echo "::endgroup::"
           else
             echo "::group::✨ Running format.sh @ $(date '+%Y-%m-%d %H:%M:%S')"
-            curl -fsSL "https://github.com/synle/workflows/blob/head/format.sh?raw=1" | bash
+            curl -fsSL "https://github.com/synle/workflows/blob/main/format.sh?raw=1" | bash
             echo "::endgroup::"
           fi
 
