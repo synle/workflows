@@ -20,5 +20,7 @@ jobs:
       id-token: write
     with:
       node-version: "24.x"
+      # Opt in only when branch rules allow a leased force-push of the source commit.
+      amend-triggering-commit: false
       early-exit-on-commit: false
       ignore-commit-pattern: "^dist/sw.*\\.js$"

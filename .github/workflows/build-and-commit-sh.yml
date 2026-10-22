@@ -8,6 +8,8 @@
 #   Format: Makefile → npm run format (from package.json) → remote format.sh fallback
 #   Test:   Makefile → test.sh → npm run test-ci → npm run test:ci → npm run test → skip
 #
+# Opt-in amendment validates before rewriting branch pushes and prefers test:coverage
+# after test-ci/test:ci. The default mode retains separate bot commits and tolerant tests.
 # Produces a Job Summary table at the end showing pass/fail/skip status for each step.
 
 name: Common Build and Commit with NodeJS and Build.sh
@@ -20,6 +22,11 @@ on:
         type: string
         required: false
         default: "24.x"
+      amend-triggering-commit:
+        description: "Amend build/format changes into the triggering branch push after validation; PRs and dispatches never commit"
+        type: boolean
+        required: false
+        default: false
       early-exit-on-commit:
         description: "Exit with failure after committing so the workflow re-triggers with updated code"
         type: boolean
@@ -58,11 +65,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ inputs.amend-triggering-commit && github.sha || github.head_ref || github.ref_name }}
+          # Full ancestry is required when replacing the source commit's tree.
+          fetch-depth: 0
+          persist-credentials: ${{ !inputs.amend-triggering-commit || github.event_name == 'push' }}
 
       - name: Setup Node.js
         id: setup-node
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.amend-triggering-commit }}
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
@@ -70,7 +80,7 @@ jobs:
 
       - name: Install Dependencies
         id: install-deps
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.amend-triggering-commit }}
         shell: bash
         run: |
           if [ -f package-lock.json ]; then
@@ -107,7 +117,7 @@ jobs:
 
       - name: Format Code
         id: format
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.amend-triggering-commit }}
         shell: bash
         run: |
           if [ -f Makefile ]; then
@@ -127,9 +137,11 @@ jobs:
       - name: Check for Meaningful Changes
         id: check-changes
         shell: bash
+        env:
+          IGNORE_COMMIT_PATTERN: ${{ inputs.ignore-commit-pattern }}
         run: |
           changed_files=$(git diff --name-only && git diff --name-only --cached && git ls-files --others --exclude-standard)
-          meaningful_files=$(echo "$changed_files" | grep -v '^$' | grep -v -E '${{ inputs.ignore-commit-pattern }}' || true)
+          meaningful_files=$(echo "$changed_files" | grep -v '^$' | grep -v -E -- "$IGNORE_COMMIT_PATTERN" || true)
           if [ -z "$meaningful_files" ]; then
             echo "Only ignored files changed, skipping commit."
             echo "should_commit=false" >> "$GITHUB_OUTPUT"
@@ -141,17 +153,30 @@ jobs:
           fi
 
       - name: Commit Changes
-        if: steps.check-changes.outputs.should_commit != 'false'
+        if: ${{ !inputs.amend-triggering-commit && steps.check-changes.outputs.should_commit != 'false' }}
         id: commit
         uses: EndBug/add-and-commit@v9
         with:
           message: "CI / CD - Build artifacts and format code"
           default_author: github_actions
 
+      - name: Lint
+        id: lint
+        if: inputs.amend-triggering-commit
+        shell: bash
+        run: |
+          if [ -f package.json ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)"; then
+            npm run lint
+          else
+            echo "⏭️ Skipping lint (no npm lint script found)"
+          fi
+
       - name: Test
         id: test
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.amend-triggering-commit }}
         shell: bash
+        env:
+          AMEND_TRIGGERING_COMMIT: ${{ inputs.amend-triggering-commit }}
         run: |
           if [ -f Makefile ]; then
             echo "::group::🧪 Running make test @ $(date '+%Y-%m-%d %H:%M:%S')"
@@ -167,6 +192,8 @@ jobs:
               TEST_SCRIPT="test-ci"
             elif node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:ci'] ? 0 : 1)"; then
               TEST_SCRIPT="test:ci"
+            elif [ "$AMEND_TRIGGERING_COMMIT" = "true" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:coverage'] ? 0 : 1)"; then
+              TEST_SCRIPT="test:coverage"
             elif node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test'] ? 0 : 1)"; then
               TEST_SCRIPT="test"
             fi
@@ -181,8 +208,25 @@ jobs:
             echo "⏭️ Skipping test (no Makefile, test.sh, or package.json found)"
           fi
 
+      - name: Amend triggering commit
+        id: amend
+        if: inputs.amend-triggering-commit && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && steps.check-changes.outputs.should_commit == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to amend"
+            exit 0
+          fi
+          # Preserve the source commit's author, message, and parent history.
+          git commit --amend --no-edit
+          # Reject a stale run even when a fetch has advanced origin's tracking ref.
+          git push --force-with-lease="$GITHUB_REF:$GITHUB_SHA" origin "HEAD:$GITHUB_REF"
+
       - name: Early Exit on Commit
-        if: inputs.early-exit-on-commit && steps.commit.outputs.committed == 'true'
+        if: ${{ !inputs.amend-triggering-commit && inputs.early-exit-on-commit && steps.commit.outputs.committed == 'true' }}
         shell: bash
         run: |
           echo "Changes were committed. Exiting early to re-trigger the workflow with updated code."
@@ -221,4 +265,6 @@ jobs:
           echo "| Build | $(get_status_icon '${{ steps.build.outcome }}') |" >> $GITHUB_STEP_SUMMARY
           echo "| Format Code | $(get_status_icon '${{ steps.format.outcome }}') |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit Changes | $(get_status_icon '${{ steps.commit.outcome }}') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | $(get_status_icon '${{ steps.lint.outcome }}') |" >> $GITHUB_STEP_SUMMARY
           echo "| Test | $(get_status_icon '${{ steps.test.outcome }}') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Amend triggering commit | $(get_status_icon '${{ steps.amend.outcome }}') |" >> $GITHUB_STEP_SUMMARY
