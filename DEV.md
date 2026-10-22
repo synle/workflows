@@ -26,3 +26,5 @@ npm run format:check  # non-mutating CI gate
 ```
 
 Changes to a `*.yml` reusable workflow must be mirrored in its `*.yml.template` sibling.
+
+Shared agent context lives in `AGENTS.md`; portable skills belong in `.agents/skills/<name>/SKILL.md`. This repository currently has no repo-local skills to migrate.

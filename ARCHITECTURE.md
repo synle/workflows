@@ -5,7 +5,7 @@
 ## Layout
 
 - `.github/workflows/` — Reusable workflows, each with a matching `*.yml.template` caller-side snippet. Exception: `cleanup-artifacts.yml` is this repo's scheduled self-maintenance job (no template).
-  - `build-and-commit-sh.yml` — Full Node.js CI with priority-based step detection and a Job Summary status table.
+  - `build-and-commit-sh.yml` — Full Node.js CI with priority-based step detection and a Job Summary status table. By default, adds a separate bot commit. Opt-in `amend-triggering-commit` validates first, then amends branch pushes with full history and an explicit triggering-SHA lease; PR/dispatch runs never commit in that mode.
   - `pr-js-yarn.yml` + `-16` / `-16-v2` variants — JS/Yarn PR pipelines.
   - `pr-format-and-commit-code.yml`, `pr-make-format.yml` — Format-and-commit flows.
   - `cleanup-pr-artifacts.yml`, `cleanup-releases.yml` — Artifact / release cleanup with dry-run support.
@@ -14,6 +14,7 @@
   - `end-release/` — Generate notes, upload assets, set final release flags.
   - `_common/{draft,finalize,notes,resolve-tag}/` — Sub-actions composed by begin/end.
 - Root scripts — `dev.sh`, `format.sh`, `setup-repo-node.sh`.
+- `AGENTS.md` — Canonical shared agent guidance and cross-agent layout rules; portable skills, when added, live in `.agents/skills/<name>/SKILL.md`.
 
 ## Notes
 

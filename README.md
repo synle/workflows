@@ -44,10 +44,20 @@ Extras:
 
 | Workflow                        | Inputs                                                                                                                                                   |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build-and-commit-sh.yml`       | `early-exit-on-commit` (`false`), `deploy-to-pages` (`false`)                                                                                            |
+| `build-and-commit-sh.yml`       | `amend-triggering-commit` (`false`), `early-exit-on-commit` (`false`), `deploy-to-pages` (`false`)                                                       |
 | `pr-format-and-commit-code.yml` | `oxfmt-version` (`"0.61.0"`)                                                                                                                             |
 | `cleanup-pr-artifacts.yml`      | `delete-runs` (`false`)                                                                                                                                  |
 | `cleanup-releases.yml`          | `cleanup-drafts` (`true`), `draft-keep-count` (`0`), `cleanup-incomplete` (`true`), `expected-assets` (`4`), `lookback-months` (`3`), `dry-run` (`true`) |
+
+### Opt-in source-commit amendment
+
+Set `amend-triggering-commit: true` in the calling job's `with:` block to fold build/format changes into the triggering commit. The default remains a separate bot commit; existing callers do not opt in automatically. This option adds no Python or other caller-side tooling requirement.
+
+Amend mode checks out the triggering SHA with full history and requires successful setup, dependency installation, build, formatting, available npm lint, and detected tests before amendment. Repositories without a lint or test entrypoint skip that check.
+
+Only branch `push` events may amend. PRs, manual dispatches, and tag pushes never amend; PR/dispatch checkout does not retain credentials. The meaningful-change filter suppresses ignored-only churn, and no changes means no rewrite. Amendment preserves the source author, message, and parent history; an explicit triggering-SHA `--force-with-lease` rejects stale runs even after fetching newer remote history.
+
+Branch rules must permit the leased force-push. A rejected push fails the job; there is no fallback to an extra commit or an unleased force-push. `early-exit-on-commit` applies only to the default separate-commit mode. Pages remains controlled by `deploy-to-pages`, with the existing push-only upload/deployment behavior.
 
 ## Build Step Detection
 
@@ -58,6 +68,8 @@ Extras:
 | **Build**  | `Makefile` → `build.sh` → `npm run build` → skip                                       |
 | **Format** | `Makefile` → `npm run format` → remote `format.sh` fallback                            |
 | **Test**   | `Makefile` → `test.sh` → `npm run test-ci` → `npm run test:ci` → `npm run test` → skip |
+
+In amend mode, available npm `lint` also runs, and `test:coverage` takes priority over ordinary `test`, after Makefile, `test.sh`, `test-ci`, and `test:ci`. Unlike the default mode, setup/install/format/test failures are fatal before amendment.
 
 A Job Summary table reports pass/fail/skip per step.
 
